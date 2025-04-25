@@ -3,6 +3,8 @@ import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useState } from 'react';
 
 export default function SettingsScreen() {
+  const clerkFrontendAPI = process.env.EXPO_PUBLIC_CLERK_FRONTEND_API;
+
   const { user } = useUser();
   const { isSignedIn } = useAuth();
   const [message, setMessage] = useState('');
@@ -10,6 +12,8 @@ export default function SettingsScreen() {
   const YOUR_EMAIL = 'alhassan.khalilnew@gmail.com';
 
   const handleEmail = () => {
+    console.log(clerkFrontendAPI);
+
     if (!message.trim()) {
       Alert.alert('✍️ اكتب رسالة أولاً');
       return;

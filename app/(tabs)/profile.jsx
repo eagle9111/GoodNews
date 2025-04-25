@@ -132,6 +132,7 @@ const Profile = () => {
       </View>
     </Pressable>
   );
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -142,9 +143,10 @@ const Profile = () => {
       setRefreshing(false);
     }
   };
-  
+
   return (
     <View className="flex-1 bg-white">
+      
     {isSignedIn ? (
       <ScrollView 
         className="flex-1"
