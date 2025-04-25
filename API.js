@@ -1,0 +1,1 @@
+export const API_URL = 'https://goodnews-backend-1.onrender.com'
