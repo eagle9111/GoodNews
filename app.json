@@ -40,7 +40,6 @@
     },
     "extra": {
             "clerkPublishableKey": "process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
-            "clerkFrontendAPI": "process.env.EXPO_PUBLIC_CLERK_FRONTEND_API",
  
       "router": {
         "origin": false
