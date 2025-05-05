@@ -1,254 +1,109 @@
-import * as React from 'react';
-import { 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  View, 
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  I18nManager,
-  Alert
-} from 'react-native';
-import { useSignIn, useOAuth } from '@clerk/clerk-expo';
-import { Link, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
+import { Link, router } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import * as EmailValidator from 'email-validator';
 import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
-import * as WebBrowser from 'expo-web-browser';
 
-// Enable RTL layout for Arabic
-I18nManager.forceRTL(true);
 
-WebBrowser.maybeCompleteAuthSession();
+export default function SignIn() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-// Error message mapping
-const ERROR_MESSAGES = {
-  'NOBRIDGE': 'مشكلة في الاتصال. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.',
-  'OAUTH_ERROR': 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى أو استخدام طريقة أخرى.',
-  'DEFAULT': 'حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقًا.',
-};
-
-export default function SignInScreen() {
-  const { isLoaded, signIn, setActive } = useSignIn();
-  const router = useRouter();
-  const { startOAuthFlow: googleAuth } = useOAuth({ strategy: 'oauth_google' });
-
-  const [emailAddress, setEmailAddress] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  
-  const getFriendlyErrorMessage = (error) => {
-    if (error.includes('NOBRIDGE')) return ERROR_MESSAGES.NOBRIDGE;
-    if (error.includes('OAUTH_ERROR')) return ERROR_MESSAGES.OAUTH_ERROR;
-    return ERROR_MESSAGES.DEFAULT;
+  const validateForm = () => {
+    const errors = [];
+    if (!EmailValidator.validate(email)) errors.push('بريد إلكتروني غير صحيح');
+    if (password.length < 6) errors.push('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    
+    if (errors.length > 0) {
+      Alert.alert('خطأ', errors.join('\n'));
+      return false;
+    }
+    return true;
   };
 
   const handleSignIn = async () => {
-    if (!isLoaded) return;
+    if (!validateForm()) return;
     
-    // Validate inputs
-    if (!emailAddress.trim()) {
-      setError('الرجاء إدخال بريدك الإلكتروني');
-      return;
-    }
-    
-    if (!password) {
-      setError('الرجاء إدخال كلمة المرور');
-      return;
-    }
-    
-    setError('');
-    setIsSubmitting(true);
-
+    setLoading(true);
     try {
-      const signInAttempt = await signIn.create({
-        identifier: emailAddress,
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
         password,
       });
-      
-      if (signInAttempt.status === 'complete') {
-        await setActive({ session: signInAttempt.createdSessionId });
-        router.replace('(tabs)/');
-      } else {
-        setError('فشل تسجيل الدخول. الرجاء المحاولة مرة أخرى.');
-      }
-    } catch (err) {
-      setError(err.errors?.[0]?.message || 'فشل تسجيل الدخول');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleGoogleAuth = async () => {
-    if (!isLoaded) return;
-    
-    setError('');
-    setIsSubmitting(true);
-    
-    try {
-      const { createdSessionId, setActive } = await googleAuth();
-      
-      if (createdSessionId) {
-        await setActive({ session: createdSessionId });
-        router.replace('/(tabs)/');
-      } else {
-        throw new Error("OAUTH_ERROR: Authentication failed");
-      }
-    } catch (err) {
-      console.error('OAuth error:', err);
-      const friendlyError = getFriendlyErrorMessage(err.message);
-      setError(friendlyError);
+      if (error) throw error;
+
+      Alert.alert(
+        'تم التسجيل بنجاح',
+        'مرحبا بك!',
+        [
+          { text: 'حسناً', onPress: () => router.replace('/(tabs)') }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('خطأ', error.message);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, backgroundColor: '#fff' }}
-    >
-      <StatusBar style="dark" translucent={false} />
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 32 }}>
-          {/* Logo and app name */}
-          <View style={{ alignItems: 'center', marginBottom: 40 }}>
-            <View style={{ backgroundColor: '#4CAF50', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 4, marginBottom: 8 }}>
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 24, fontFamily: 'Tajawal-Bold' }}>أخبار الخير</Text>
-            </View>
-            <Text style={{ color: '#666', textAlign: 'center', fontFamily: 'Tajawal-Regular' }}>
-              تسجيل الدخول إلى حسابك
-            </Text>
-          </View>
+    <View className="flex-1 bg-gray-600 px-6 pt-12">
+           <TouchableOpacity 
+        onPress={() => router.back()} 
+        className="absolute top-4 left-4 z-10 p-2"
+      >
+        <Ionicons name="arrow-back" size={28} color="white" />
+      </TouchableOpacity>
+      <Image 
+        source={require('../../assets/images/icon.png')}
+        className="w-24 h-24 mb-8 self-center"
+        resizeMode="contain"
+      />
 
-          {error !== '' && (
-            <View style={{ 
-              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-              padding: 16,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: 'rgba(239, 68, 68, 0.3)',
-              marginBottom: 24,
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}>
-              <Ionicons name="warning" size={20} color="#ef4444" style={{ marginLeft: 12 }} />
-              <Text style={{ 
-                color: '#ef4444', 
-                flex: 1,
-                fontSize: 15,
-                lineHeight: 20,
-                textAlign: 'right',
-                fontFamily: 'Tajawal-Regular'
-              }}>
-                {error}
-                {error === ERROR_MESSAGES.NOBRIDGE && (
-                  <Text style={{ fontSize: 13, color: '#ef4444aa' }}>\n\nحاول التبديل بين WiFi وبيانات الجوال.</Text>
-                )}
-              </Text>
-            </View>
-          )}
+      <Text className="text-3xl font-bold text-gray-900 text-right mb-8">
+        تسجيل الدخول
+      </Text>
 
-          <View>
-            <TextInput
-              value={emailAddress}
-              onChangeText={setEmailAddress}
-              placeholder="البريد الإلكتروني"
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={{
-                backgroundColor: '#f9f9f9',
-                color: '#333',
-                padding: 16,
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: '#e1e1e1',
-                marginBottom: 8,
-                textAlign: 'right',
-                fontFamily: 'Tajawal-Regular'
-              }}
-            />
+      <View className="bg-white rounded-2xl p-6 shadow">
+        <TextInput
+          className="bg-gray-50 rounded-lg p-4 text-right text-gray-900 border border-gray-200 mb-4"
+          placeholder="البريد الإلكتروني"
+          placeholderTextColor="#6b7280"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="كلمة المرور"
-              placeholderTextColor="#999"
-              secureTextEntry
-              style={{
-                backgroundColor: '#f9f9f9',
-                color: '#333',
-                padding: 16,
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: '#e1e1e1',
-                marginBottom: 24,
-                textAlign: 'right',
-                fontFamily: 'Tajawal-Regular'
-              }}
-            />
-          </View>
+        <TextInput
+          className="bg-gray-50 rounded-lg p-4 text-right text-gray-900 border border-gray-200 mb-6"
+          placeholder="كلمة المرور"
+          placeholderTextColor="#6b7280"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-          <TouchableOpacity
-            onPress={handleSignIn}
-            disabled={isSubmitting}
-            style={{
-              backgroundColor: isSubmitting ? '#7CB342' : '#4CAF50',
-              paddingVertical: 12,
-              borderRadius: 6,
-              marginBottom: 24
-            }}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 16, fontFamily: 'Tajawal-Bold' }}>
-                تسجيل الدخول
-              </Text>
-            )}
-          </TouchableOpacity>
+        <TouchableOpacity
+          className={`bg-gray-500 rounded-lg p-4 ${loading ? 'opacity-50' : ''} shadow-lg`}
+          disabled={loading}
+          onPress={handleSignIn}
+        >
+          <Text className="text-white text-center font-medium text-lg">
+            {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+          </Text>
+        </TouchableOpacity>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#e1e1e1' }} />
-            <Text style={{ color: '#666', paddingHorizontal: 16, fontFamily: 'Tajawal-Regular' }}>أو</Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#e1e1e1' }} />
-          </View>
-
-          {/* Google Sign In */}
-          <TouchableOpacity
-            onPress={handleGoogleAuth}
-            disabled={isSubmitting}
-            style={{
-              backgroundColor: 'white',
-              paddingVertical: 12,
-              borderRadius: 6,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: '#e1e1e1',
-              opacity: isSubmitting ? 0.7 : 1
-            }}
-          >
-            <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 16, fontFamily: 'Tajawal-Bold' }}>
-              المتابعة باستخدام جوجل
-            </Text>
-            <Ionicons name="logo-google" size={20} color="#333" style={{ marginLeft: 20 }} />
-          </TouchableOpacity>
-          
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 }}>
-            <Link href="/(auth)/sign-up" asChild>
-              <Text style={{ color: '#4CAF50', fontWeight: 'bold', fontFamily: 'Tajawal-Bold' }}>إنشاء حساب</Text>
-            </Link>
-            <Text style={{ color: '#666', fontFamily: 'Tajawal-Regular' }}> ليس لديك حساب؟ </Text>
-          </View>
-          
+        <View className="flex-row justify-center mt-6">
+          <Text className="text-gray-600 text-sm">ليس لديك حساب؟ </Text>
+          <Link href="/(auth)/sign-up" className="text-blue-500 font-medium text-sm">
+            إنشاء حساب
+          </Link>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </View>
   );
 }

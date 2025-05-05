@@ -1,304 +1,136 @@
-import * as React from 'react';
-import { 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  View, 
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  I18nManager,
-} from 'react-native';
-import { useSignUp } from '@clerk/clerk-expo';
-import { Link, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
+import { Link, router } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import * as EmailValidator from 'email-validator';
 import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
 
-// Enable RTL layout for Arabic
-I18nManager.forceRTL(true);
 
-export default function SignUpScreen() {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const router = useRouter();
+export default function SignUp() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [emailAddress, setEmailAddress] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [firstName, setFirstName] = React.useState('');
-  const [lastName, setLastName] = React.useState('');
-  const [pendingVerification, setPendingVerification] = React.useState(false);
-  const [code, setCode] = React.useState('');
-  const [error, setError] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  
-  // Handle submission of sign-up form
-  const onSignUpPress = async () => {
-    if (!isLoaded) return;
+  const validateForm = () => {
+    const errors = [];
+    if (!firstName.trim()) errors.push('الاسم الأول مطلوب');
+    if (!lastName.trim()) errors.push('الاسم الأخير مطلوب');
+    if (!EmailValidator.validate(email)) errors.push('بريد إلكتروني غير صحيح');
+    if (password.length < 6) errors.push('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
     
-    // Validate inputs
-    if (!emailAddress.trim()) {
-      setError('الرجاء إدخال بريدك الإلكتروني');
-      return;
+    if (errors.length > 0) {
+      Alert.alert('خطأ', errors.join('\n'));
+      return false;
     }
-    
-    if (!password) {
-      setError('الرجاء إدخال كلمة المرور');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
-      return;
-    }
-    
-    setError('');
-    setIsSubmitting(true);
-
-    try {
-      await signUp.create({
-        emailAddress,
-        password,
-        firstName: firstName.trim() || undefined,
-        lastName: lastName.trim() || undefined,
-      });
-
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      setPendingVerification(true);
-    } catch (err) {
-      setError(err.errors?.[0]?.message || 'فشل التسجيل');
-    } finally {
-      setIsSubmitting(false);
-    }
+    return true;
   };
 
-  // Handle submission of verification form
-  const onVerifyPress = async () => {
-    if (!isLoaded) return;
+  const handleSignUp = async () => {
+    if (!validateForm()) return;
     
-    if (!code.trim()) {
-      setError('الرجاء إدخال رمز التحقق');
-      return;
-    }
-    
-    setError('');
-    setIsSubmitting(true);
-
+    setLoading(true);
     try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+          emailRedirectTo: 'your-app-scheme://'
+        }
       });
 
-      if (signUpAttempt.status === 'complete') {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        router.replace('(tabs)/');
-      } else {
-        setError('فشل التحقق. الرجاء المحاولة مرة أخرى');
-      }
-    } catch (err) {
-      setError(err.errors?.[0]?.message || 'فشل التحقق');
+      if (error) throw error;
+
+      Alert.alert(
+        'تم التسجيل بنجاح',
+        'تم إرسال رابط التحقق إلى بريدك الإلكتروني. يرجى التحقق قبل تسجيل الدخول.',
+        [
+          { text: 'حسناً', onPress: () => router.replace('/(auth)/sign-in') }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('خطأ', error.message);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, backgroundColor: '#fff' }}
-    >
-    <StatusBar style="dark" translucent={false} />
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 32 }}>
-          {/* Logo and app name */}
-          <View style={{ alignItems: 'center', marginBottom: 40 }}>
-            <View style={{ backgroundColor: '#4CAF50', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 4, marginBottom: 8 }}>
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 24, fontFamily: 'Tajawal-Bold' }}>أخبار الخير</Text>
-            </View>
-            <Text style={{ color: '#666', textAlign: 'center', fontFamily: 'Tajawal-Regular' }}>
-              {pendingVerification ? 'تحقق من بريدك الإلكتروني' : 'إنشاء حساب جديد'}
-            </Text>
-          </View>
+    <View className="flex-1 bg-gray-600 px-6 pt-12">
+     <TouchableOpacity 
+        onPress={() => router.back()} 
+        className="absolute top-4 left-4 z-10 p-2"
+      >
+        <Ionicons name="arrow-back" size={28} color="white" />
+      </TouchableOpacity>
+      <Image 
+        source={require('../../assets/images/icon.png')}
+        className="w-24 h-24 mb-8 self-center"
+        resizeMode="contain"
+      />
 
-          {error !== '' && (
-            <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 12, borderRadius: 6, marginBottom: 24 }}>
-              <Text style={{ color: '#ef4444', textAlign: 'center', fontFamily: 'Tajawal-Regular' }}>{error}</Text>
-            </View>
-          )}
+      <Text className="text-3xl font-bold text-gray-900 text-right mb-8">
+        إنشاء حساب جديد
+      </Text>
 
-          {pendingVerification ? (
-            <View>
-              <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                <Ionicons name="mail-outline" size={48} color="#4CAF50" />
-                <Text style={{ color: '#333', fontSize: 18, fontWeight: 'bold', marginTop: 16, fontFamily: 'Tajawal-Bold' }}>تحقق من بريدك الوارد</Text>
-                <Text style={{ color: '#666', textAlign: 'center', marginTop: 8, fontFamily: 'Tajawal-Regular' }}>
-                  لقد أرسلنا رمز التحقق إلى {emailAddress}
-                </Text>
-              </View>
+      <View className="bg-white rounded-2xl p-6 shadow">
+        <TextInput
+          className="bg-gray-50 rounded-lg p-4 text-right text-gray-900 border border-gray-200 mb-4"
+          placeholder="الاسم الأول"
+          placeholderTextColor="#6b7280"
+          value={firstName}
+          onChangeText={setFirstName}
+        />
 
-              <TextInput
-                value={code}
-                placeholder="أدخل رمز التحقق"
-                placeholderTextColor="#999"
-                onChangeText={setCode}
-                keyboardType="number-pad"
-                style={{
-                  backgroundColor: '#f9f9f9',
-                  color: '#333',
-                  padding: 16,
-                  borderRadius: 6,
-                  borderWidth: 1,
-                  borderColor: '#e1e1e1',
-                  marginBottom: 24,
-                  fontSize: 16,
-                  letterSpacing: 2,
-                  textAlign: 'center',
-                  fontFamily: 'Tajawal-Regular'
-                }}
-              />
+        <TextInput
+          className="bg-gray-50 rounded-lg p-4 text-right text-gray-900 border border-gray-200 mb-4"
+          placeholder="الاسم الأخير"
+          placeholderTextColor="#6b7280"
+          value={lastName}
+          onChangeText={setLastName}
+        />
 
-              <TouchableOpacity
-                onPress={onVerifyPress}
-                disabled={isSubmitting}
-                style={{
-                  backgroundColor: isSubmitting ? '#7CB342' : '#4CAF50',
-                  paddingVertical: 14,
-                  borderRadius: 6,
-                  marginBottom: 16
-                }}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 16, fontFamily: 'Tajawal-Bold' }}>
-                    تحقق من البريد
-                  </Text>
-                )}
-              </TouchableOpacity>
+        <TextInput
+          className="bg-gray-50 rounded-lg p-4 text-right text-gray-900 border border-gray-200 mb-4"
+          placeholder="البريد الإلكتروني"
+          placeholderTextColor="#6b7280"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-              <TouchableOpacity
-                onPress={() => setPendingVerification(false)}
-                style={{ paddingVertical: 12 }}
-              >
-                <Text style={{ color: '#666', textAlign: 'center', fontFamily: 'Tajawal-Regular' }}>
-                  العودة إلى التسجيل
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View>
-              <Text style={{ color: '#333', fontSize: 16, marginBottom: 6, fontFamily: 'Tajawal-Medium', textAlign: 'right' }}>معلوماتك</Text>
+        <TextInput
+          className="bg-gray-50 rounded-lg p-4 text-right text-gray-900 border border-gray-200 mb-6"
+          placeholder="كلمة المرور"
+          placeholderTextColor="#6b7280"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-              <View style={{ flexDirection: 'row', marginBottom: 8, gap: 8 }}>
-                <TextInput
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="الاسم الثاني (اختياري)"
-                  placeholderTextColor="#999"
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#f9f9f9',
-                    color: '#333',
-                    padding: 16,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: '#e1e1e1',
-                    textAlign: 'right',
-                    fontFamily: 'Tajawal-Regular'
-                  }}
-                />
-                
-                <TextInput
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="الاسم الأول (اختياري)"
-                  placeholderTextColor="#999"
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#f9f9f9',
-                    color: '#333',
-                    padding: 16,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: '#e1e1e1',
-                    textAlign: 'right',
-                    fontFamily: 'Tajawal-Regular'
-                  }}
-                />
-              </View>
+        <TouchableOpacity
+          className={`bg-gray-500 rounded-lg p-4 ${loading ? 'opacity-50' : ''} shadow-lg`}
+          disabled={loading}
+          onPress={handleSignUp}
+        >
+          <Text className="text-white text-center font-medium text-lg">
+            {loading ? 'جاري التسجيل...' : 'تسجيل الحساب'}
+          </Text>
+        </TouchableOpacity>
 
-              <TextInput
-                value={emailAddress}
-                onChangeText={setEmailAddress}
-                placeholder="البريد الإلكتروني"
-                placeholderTextColor="#999"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={{
-                  backgroundColor: '#f9f9f9',
-                  color: '#333',
-                  padding: 16,
-                  borderRadius: 6,
-                  borderWidth: 1,
-                  borderColor: '#e1e1e1',
-                  marginBottom: 8,
-                  textAlign: 'right',
-                  fontFamily: 'Tajawal-Regular'
-                }}
-              />
-
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="كلمة المرور (8 أحرف على الأقل)"
-                placeholderTextColor="#999"
-                secureTextEntry={true}
-                style={{
-                  backgroundColor: '#f9f9f9',
-                  color: '#333',
-                  padding: 16,
-                  borderRadius: 6,
-                  borderWidth: 1,
-                  borderColor: '#e1e1e1',
-                  marginBottom: 24,
-                  textAlign: 'right',
-                  fontFamily: 'Tajawal-Regular'
-                }}
-              />
-
-              <TouchableOpacity
-                onPress={onSignUpPress}
-                disabled={isSubmitting}
-                style={{
-                  backgroundColor: isSubmitting ? '#7CB342' : '#4CAF50',
-                  paddingVertical: 14,
-                  borderRadius: 6,
-                  marginBottom: 24
-                }}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 16, fontFamily: 'Tajawal-Bold' }}>
-                    إنشاء حساب
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 }}>
-                <Link href="/(auth)/sign-in" asChild>
-                  <Text style={{ color: '#4CAF50', fontWeight: 'bold', fontFamily: 'Tajawal-Bold' }}>تسجيل الدخول</Text>
-                </Link>
-                <Text style={{ color: '#666', fontFamily: 'Tajawal-Regular' }}> لديك حساب بالفعل؟ </Text>
-              </View>
-              
-              {/* Legal */}
-              <Text style={{ color: '#888', fontSize: 12, textAlign: 'center', marginTop: 32, fontFamily: 'Tajawal-Regular' }}>
-                بإنشاء حساب، فإنك توافق على شروط الخدمة وسياسة الخصوصية الخاصة بنا
-              </Text>
-            </View>
-          )}
+        <View className="flex-row justify-center mt-6">
+          <Text className="  text-sm">لديك حساب بالفعل؟ </Text>
+          <Link href="/(auth)/sign-in" className="text-blue-500 font-medium text-sm">
+            تسجيل الدخول
+          </Link>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </View>
   );
 }

@@ -1,1 +1,3 @@
-export const API_URL = 'https://goodnews-backend-1.onrender.com'
+import Constants from 'expo-constants';
+
+export const API_URL = Constants.expoConfig.extra.API_URL;

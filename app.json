@@ -2,7 +2,7 @@
   "expo": {
     "name": "أخبار الخير",
     "slug": "GoodNews",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -39,8 +39,10 @@
       "typedRoutes": true
     },
     "extra": {
-            "clerkPublishableKey": "process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
- 
+      "API_URL": "https://goodnews-backend-1.onrender.com",
+      "SUPABASE_URL": "https://qdboonezhwhlxmfwcqth.supabase.co",
+      "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkYm9vbmV6aHdobHhtZndjcXRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU2NDg5NDIsImV4cCI6MjA2MTIyNDk0Mn0.At0XW8xXnBoftxu6HlHIYSRs1bEI8MSvypuq3ePFdBM",
+     
       "router": {
         "origin": false
       },

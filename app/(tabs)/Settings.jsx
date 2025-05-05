@@ -1,27 +1,21 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Linking, Alert, Modal, Pressable } from 'react-native';
-import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useState } from 'react';
 
 export default function SettingsScreen() {
-  const clerkFrontendAPI = process.env.EXPO_PUBLIC_CLERK_FRONTEND_API;
 
-  const { user } = useUser();
-  const { isSignedIn } = useAuth();
   const [message, setMessage] = useState('');
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const YOUR_EMAIL = 'alhassan.khalilnew@gmail.com';
 
   const handleEmail = () => {
-    console.log(clerkFrontendAPI);
 
     if (!message.trim()) {
       Alert.alert('✍️ اكتب رسالة أولاً');
       return;
     }
 
-    const email = isSignedIn ? user?.primaryEmailAddress?.emailAddress : "مستخدم غير مسجل";
     const subject = encodeURIComponent('رسالة من تطبيق الأخبار');
-    const body = encodeURIComponent(`من: ${email}\n\n${message}`);
+    const body = encodeURIComponent(`\n\n${message}`);
     Linking.openURL(`mailto:${YOUR_EMAIL}?subject=${subject}&body=${body}`).catch(() =>
       Alert.alert('لم يتم فتح تطبيق البريد')
     );
@@ -34,9 +28,7 @@ export default function SettingsScreen() {
       {/* User Profile Section */}
       <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
         <Text className="text-right font-semibold mb-2 text-gray-800">👤 حسابك</Text>
-        <Text className="text-right text-gray-600">
-          {isSignedIn ? user?.primaryEmailAddress?.emailAddress : "غير مسجل دخول"}
-        </Text>
+        
       </View>
 
       {/* App Info Section */}
@@ -81,54 +73,55 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Privacy Policy Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={privacyModalVisible}
-        onRequestClose={() => setPrivacyModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black bg-opacity-50">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-gray-800">سياسة الخصوصية</Text>
-              <Pressable onPress={() => setPrivacyModalVisible(false)}>
-                <Text className="text-blue-500 text-lg">تم</Text>
-              </Pressable>
-            </View>
-            
-            <ScrollView>
-              <Text className="text-right text-gray-700 mb-4 leading-6">
-                <Text className="font-bold">1. البيانات التي نجمعها:</Text>
-                {"\n"}- نستخدم Clerk للتحقق من الهوية فقط (بريد إلكتروني)
-                {"\n"}- لا نخزن أي بيانات شخصية أخرى
-                {"\n"}- الأخبار المخزنة مؤقتًا (عناوين، تواريخ، أوصاف قصيرة)
-              </Text>
-              
-              <Text className="text-right text-gray-700 mb-4 leading-6">
-                <Text className="font-bold">2. كيفية استخدام البيانات:</Text>
-                {"\n"}- لتوفير خدمة الأخبار
-                {"\n"}- لتحسين تجربة المستخدم
-                {"\n"}- لا نشارك البيانات مع أطراف ثالثة
-              </Text>
-              
-              <Text className="text-right text-gray-700 mb-4 leading-6">
-                <Text className="font-bold">3. حماية البيانات:</Text>
-                {"\n"}- نستخدم معايير أمان عالية
-                {"\n"}- البيانات محمية عبر تشفير
-                {"\n"}- نحذف الأخاريخ القديمة تلقائيًا
-              </Text>
-              
-              <Text className="text-right text-gray-700 leading-6">
-                <Text className="font-bold">4. الامتثال القانوني:</Text>
-                {"\n"}- نلتزم بقوانين الخصوصية اللبنانية
-                {"\n"}- لا نخزن محتوى أخبار كامل
-                {"\n"}- نربط دائمًا بمصدر الخبر الأصلي
-              </Text>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+   {/* Privacy Policy Modal */}
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={privacyModalVisible}
+  onRequestClose={() => setPrivacyModalVisible(false)}
+>
+  <View className="flex-1 justify-end bg-black bg-opacity-50">
+    <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-xl font-bold text-gray-800">سياسة الخصوصية</Text>
+        <Pressable onPress={() => setPrivacyModalVisible(false)}>
+          <Text className="text-blue-500 text-lg">تم</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView>
+        <Text className="text-right text-gray-700 mb-4 leading-6">
+          <Text className="font-bold">1. البيانات التي نجمعها:</Text>
+          {"\n"}- نستخدم Supabase للتحقق من الهوية (البريد الإلكتروني فقط)
+          {"\n"}- لا نجمع أو نخزن بيانات شخصية إضافية
+          {"\n"}- نخزن مؤقتًا الأخبار (العنوان، التاريخ، وصف مختصر)
+        </Text>
+
+        <Text className="text-right text-gray-700 mb-4 leading-6">
+          <Text className="font-bold">2. كيفية استخدام البيانات:</Text>
+          {"\n"}- لتقديم الأخبار بشكل مخصص وفعال
+          {"\n"}- لتحسين الأداء وتجربة المستخدم
+          {"\n"}- لا نشارك أي بيانات مع جهات خارجية
+        </Text>
+
+        <Text className="text-right text-gray-700 mb-4 leading-6">
+          <Text className="font-bold">3. حماية البيانات:</Text>
+          {"\n"}- نستخدم بروتوكولات أمان وتشفير متقدمة
+          {"\n"}- يتم تأمين البيانات بواسطة Supabase
+          {"\n"}- حذف تلقائي للأخبار القديمة لتقليل التخزين
+        </Text>
+
+        <Text className="text-right text-gray-700 leading-6">
+          <Text className="font-bold">4. الامتثال القانوني:</Text>
+          {"\n"}- نلتزم بقوانين حماية البيانات في لبنان
+          {"\n"}- لا نخزن النص الكامل للأخبار
+          {"\n"}- نعرض روابط المصدر الرسمي دائمًا
+        </Text>
+      </ScrollView>
+    </View>
+  </View>
+</Modal>
+
     </ScrollView>
   );
 }
